@@ -259,6 +259,13 @@ ul {
     box-shadow: 0 2px 5px rgb(0 0 0 / 15%);
 }
 
+.grandchildren>.is-selected {
+    color: #FFF;
+    background: #2F9C67;
+    border: 1px #FFF solid;
+    box-shadow: 0 2px 5px rgb(0 0 0 / 15%);
+}
+
 .is-selected {
     color: #FFF;
     background: #2F9C67;

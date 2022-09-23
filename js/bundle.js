@@ -349,7 +349,7 @@ function getSelectedItemFromUl(className) {
     return selections;
 } //getSelectedItemFromUl
 
-function updateDataFromFilters() {
+function updateDataFromFilters(grandchildrenArr) {
     var data = mappingData;
     const parentFiltersArr = getSelectedFilters();
     const parentItemSelection = getSelectedItemFromUl("collection-item");
@@ -381,6 +381,12 @@ function updateDataFromFilters() {
             }
             return childrenItemSelection.includes(d[config[colFilter]]);
         })
+    }
+    if (grandchildrenArr != undefined) {
+        data = data.filter(function(d) {
+            const vals = splitMultiValues(d[config.SubActivities]);
+            return findOneValue(grandchildrenArr, vals);
+        });
     }
 
     if (countrySelectedFromMap != "") {
@@ -494,25 +500,36 @@ function createChildrenPanel(arr = childrenDefaultListArr) {
     }
     $(".children").append(lis);
 
+
     $(".children li").on("click", function(d) {
         const isSelected = $(this).hasClass('is-selected');
+        var grandchildrenSelectionArr = [];
         if (!isSelected) {
             $(this).addClass('is-selected');
+            $(this).addClass('is-clicked');
             // display sub-activities
             if (displayBy == "partner") {
 
-                var html = '<div class="grandchildrenContent"><main><ol class="grandchildren"></ol></main></div>';
+                var html = '<div class="grandchildrenContent"><main><ul class="grandchildren"></ul></main></div>';
                 $(this).append(html);
                 const act = d3.select(this).select("h6").text();
                 createSubActivitiesPanel(act);
             }
         } else {
-            $(this).removeClass('is-selected');
-            $(this).children('.grandchildrenContent').remove();
+            // test is grandchildren are selected
+            const grandChildrenArr = getSelectedItemFromUl("grandchildren");
+            // if no then close 
+            if (grandChildrenArr.length == 0) {
+                $(this).removeClass('is-selected');
+                $(this).children('.grandchildrenContent').remove();
+            } else {
+                // if yes then update
+                grandchildrenSelectionArr = grandChildrenArr;
+            }
         }
 
         // update others visuals
-        updateDataFromFilters();
+        grandchildrenSelectionArr.length != 0 ? updateDataFromFilters(grandchildrenSelectionArr) : updateDataFromFilters();
         choroplethMap();
         setUpdateKeyFigures();
         // setMetricsPanels();
@@ -520,24 +537,38 @@ function createChildrenPanel(arr = childrenDefaultListArr) {
 } //createChildrenPanel
 
 function createSubActivitiesPanel(activity) {
-    const arr = [];
+    const subActivities = [];
     const dico = dataDictionary.filter(d => { return d.Code == activity; });
     dico.forEach(element => {
-        arr.push(element.Value);
+        subActivities.push(element.Value);
     });
 
+    var arr = [];
+    filteredMappingData.forEach(element => {
+        const vals = splitMultiValues(element[config.SubActivities]);
+        vals.forEach(subAct => {
+            if (subActivities.includes(subAct)) {
+                arr.includes(subAct) ? null : arr.push(subAct)
+            }
+        });
+    });
     $(".grandchildren").html('');
     // const hiddenClass = (!d3.select("#viewDetails").property("checked")) ? "hidden" : null;
     var lis = [];
     // const arr = ["Community Feedback", "Data collection", "Engagement"];
     for (let index = 0; index < arr.length; index++) {
         lis += '<li>' +
-            '<div class="item-child">' +
-            '<p>' + arr[index] + '</p>' +
+            '<div class="item">' +
+            '<h6>' + arr[index] + '</h6>' +
             '</div>' +
             '</li>';
     }
     $(".grandchildren").append(lis);
+    $(".grandchildren li").on("click", function(d) {
+        const isSelected = $(this).hasClass('is-selected');
+        !isSelected ? $(this).addClass('is-selected') : $(this).removeClass('is-selected');
+
+    });
 } //createSubActivitiesPanel
 
 $('#viewDetails').change(function() {
@@ -822,11 +853,7 @@ function initiateMap() {
             updateVizFromMap(d.properties.ADM2_PCODE);
             createMapFilterSpan(d.properties.ADM2_EN);
             const cntryISO3 = String(d.properties.ADM2_PCODE).toUpperCase();
-            // show reset button
-            // d3.select("#overview > h5").text(d.properties.NAME);
-            // d3.select("#overview > img").attr("src", "assets/flags/" + cntryISO3 + ".svg");
-            // d3.select("#overview > img").classed("hidden", false);
-            // show tutorial for now
+
             d3.select("#tutorial").classed("hidden", true);
             d3.select("#projectDetails").classed("hidden", false);
         });
@@ -839,30 +866,6 @@ function initiateMap() {
         .attr("transform", function(d) { return "translate(" + path.centroid(d) + ")"; })
         .attr("dy", ".35em")
         .text(function(d) { return d.properties.ADM2_EN; });
-    // .attr('class', function(d) {
-    //     var className = (countriesISO3Arr.includes(d.properties.ISO_A3)) ? 'hasData' : 'inactive';
-    //     return className;
-    // });
-    // .on("click;", function(d) {
-    //     // fix inactive but clickage bug
-    //     if (d3.select(this).classed("inactive")) {
-    //         return;
-    //     }
-    //     mapsvg.select('g').selectAll('.hasData').attr('fill', mapNotClickedColor);
-    //     $(this).attr('fill', mapClickedColor);
-    //     $(this).addClass('clicked');
-    //     countrySelectedFromMap = d.properties.ISO_A3;
-    //     updateVizFromMap(d.properties.ISO_A3);
-    //     createMapFilterSpan(d.properties.NAME_LONG);
-    //     const cntryISO3 = String(d.properties.ISO_A3).toUpperCase();
-    //     // show reset button
-    //     d3.select("#overview > h5").text(d.properties.NAME_LONG);
-    //     d3.select("#overview > img").attr("src", "assets/flags/" + cntryISO3 + ".svg");
-    //     d3.select("#overview > img").classed("hidden", false);
-    //     // show tutorial for now
-    //     d3.select("#tutorial").classed("hidden", true);
-    //     d3.select("#projectDetails").classed("hidden", true);
-    // });
 
     choroplethMap();
 
